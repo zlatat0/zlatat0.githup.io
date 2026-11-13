@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Не забудь — календарь долгов</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :root {
+    --bg: #0F1115;
+    --card: #1C1F26;
+    --card-hover: #242831;
+    --accent: #64FFDA;
+    --accent-soft: rgba(100, 255, 218, 0.12);
+    --text: #E8EAF0;
+    --text-muted: #8A8F9C;
+    --danger: #FF6B6B;
+    --warning: #FFB86B;
+    --border: rgba(255, 255, 255, 0.06);
+  }
+
+  html, body {
+    height: 100%;
+    background: #05060A;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 420px;
+    min-height: 100vh;
+    background: var(--bg);
+    padding: 24px 20px 100px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Шапка */
+  .header {
+    margin-bottom: 24px;
+  }
+
+  .header__title {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .header__title::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  .header__subtitle {
+    margin-top: 6px;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  /* Статистика */
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+
+  .stat-card:active {
+    transform: scale(0.97);
+  }
+
+  .stat-card__value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-card__label {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Форма добавления */
+  .add-form {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 16px;
+    margin-bottom: 28px;
+  }
+
+  .add-form__input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 16px;
+    padding: 8px 0;
+    font-family: inherit;
+  }
+
+  .add-form__input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .add-form__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .date-picker {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    color-scheme: dark;
+  }
+
+  .date-picker:focus {
+    border-color: var(--accent);
+  }
+
+  .add-btn {
+    background: var(--accent);
+    color: #0F1115;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+    font-family: inherit;
+  }
+
+  .add-btn:active {
+    transform: scale(0.94);
+  }
+
+  .add-btn:hover {
+    box-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
+  }
+
+  /* Секции задач */
+  .section {
+    margin-bottom: 24px;
+  }
+
+  .section__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section__title .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+  }
+
+  .section--overdue .section__title { color: var(--danger); }
+  .section--overdue .dot { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  .section--today .section__title { color: var(--accent); }
+  .section--today .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .section--tomorrow .section__title { color: var(--warning); }
+  .section--tomorrow .dot { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
+
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .task {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: transform 0.2s ease, background 0.2s ease, opacity 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .task:active {
+    transform: scale(0.98);
+  }
+
+  .task--completing {
+    animation: shred 0.55s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+  }
+
+  @keyframes shred {
+    0% { transform: scale(1) rotate(0); opacity: 1; }
+    40% { transform: scale(1.03) rotate(-1deg); }
+    100% { transform: scale(0.3) rotate(8deg) translateX(40px); opacity: 0; }
+  }
+
+  .task__check {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--text-muted);
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+  }
+
+  .task__check:active {
+    transform: scale(0.85);
+  }
+
+  .task__check:hover {
+    border-color: var(--accent);
+  }
+
+  .task__check svg {
+    width: 14px;
+    height: 14px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .task__check:hover svg {
+    opacity: 0.5;
+  }
+
+  .task__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .task__title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    word-break: break-word;
+  }
+
+  .task__meta {
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .task--overdue .task__meta { color: var(--danger); }
+  .task--today .task__meta { color: var(--accent); }
+
+  .task__actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .task__btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .task__btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+  }
+
+  .task__btn--ai:hover {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .task__btn--delete:hover {
+    background: rgba(255, 107, 107, 0.1);
+    color: var(--danger);
+  }
+
+  .task__btn:active {
+    transform: scale(0.85);
+  }
+
+  /* Пустое состояние */
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty__icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+  }
+
+  .empty__text {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .empty__text strong {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* Тосты */
+  .toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    width: calc(100% - 40px);
+    max-width: 380px;
+  }
+
+  .toast {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    animation: toastIn 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+    backdrop-filter: blur(10px);
+  }
+
+  .toast--out {
+    animation: toastOut 0.3s ease forwards;
+  }
+
+  .toast__icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  @keyframes toastIn {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes toastOut {
+    to { transform: translateY(30px); opacity: 0; }
+  }
+
+  /* Модалка ИИ */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay--active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg);
+    border-radius: 24px 24px 0 0;
+    padding: 24px 20px 32px;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .modal-overlay--active .modal {
+    transform: translateY(0);
+  }
+
+  .modal__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .modal__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .modal__title {
+    font-size: 18px;
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .modal__close {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: var(--card);
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .modal__close:hover {
+    background: var(--card-hover);
+    color: var(--text);
+  }
+
+  .modal__close:active {
+    transform: scale(0.9);
+  }
+
+  .modal__task {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  .modal__task strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .ai-response {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .ai-response__section {
+    margin-bottom: 16px;
+  }
+
+  .ai-response__section:last-child {
+    margin-bottom: 0;
+  }
+
+  .ai-response__label {
+    font-size: 12px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .ai-response__text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .ai-response__steps {
+    list-style: none;
+    counter-reset: step;
+  }
+
+  .ai-response__steps li {
+    counter-increment: step;
+    padding: 8px 0 8px 32px;
+    position: relative;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .ai-response__steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal__actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .modal__btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+
+  .modal__btn--primary {
+    background: var(--accent);
+    color: #0F1115;
+  }
+
+  .modal__btn--primary:hover {
+    box-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
+  }
+
+  .modal__btn--secondary {
+    background: var(--card);
+    color: var(--text);
+  }
+
+  .modal__btn:active {
+    transform: scale(0.96);
+  }
+
+  /* Скроллбар */
+  ::-webkit-scrollbar { width: 0; }
+
+  /* Адаптация для маленьких экранов */
+  @media (max-width: 420px) {
+    .app { padding: 20px 16px 100px; }
+    .header__title { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="header">
+    <h1 class="header__title">Не забудь</h1>
+    <p class="header__subtitle">Без паники и зубрёжки. По одному шагу.</p>
+  </header>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-card__value" id="statPending">0</div>
+      <div class="stat-card__label">В работе</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__value" id="statDone">0</div>
+      <div class="stat-card__label">Закрыто</div>
+    </div>
+  </div>
+
+  <form class="add-form" id="addForm">
+    <input
+      type="text"
+      class="add-form__input"
+      id="taskInput"
+      placeholder="Что нельзя забыть? (например: закон Ома)"
+      maxlength="120"
+      autocomplete="off"
+      required
+    >
+    <div class="add-form__row">
+      <input type="date" class="date-picker" id="dateInput">
+      <button type="submit" class="add-btn">Добавить</button>
+    </div>
+  </form>
+
+  <main id="tasksContainer"></main>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal">
+    <div class="modal__header">
+      <div class="modal__icon">🤖</div>
+      <div class="modal__title">ИИ-помощник</div>
+      <button class="modal__close" onclick="closeModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'ne_zabud_tasks_v1';
+  let tasks = [];
+
+  // --- Работа с localStorage ---
+  function loadTasks() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      tasks = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      tasks = [];
+    }
+  }
+
+  function saveTasks() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }
+
+  // --- Утилиты для дат ---
+  function toDateKey(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function todayKey() {
+    return toDateKey(new Date());
+  }
+
+  function tomorrowKey() {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return toDateKey(d);
+  }
+
+  function formatDateDisplay(dateStr) {
+    if (!dateStr) return 'Без срока';
+    const today = todayKey();
+    const tomorrow = tomorrowKey();
+    if (dateStr === today) return 'Сегодня';
+    if (dateStr === tomorrow) return 'Завтра';
+    const d = new Date(dateStr + 'T00:00:00');
+    const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+    return `${d.getDate()} ${months[d.getMonth()]}`;
+  }
+
+  // --- Группировка задач ---
+  function groupTasks() {
+    const today = todayKey();
+    const tomorrow = tomorrowKey();
+
+    const groups = {
+      overdue: [],
+      today: [],
+      tomorrow: [],
+      later: [],
+      noDate: []
+    };
+
+    tasks.forEach(t => {
+      if (t.completed) return;
+      if (!t.dueDate) groups.noDate.push(t);
+      else if (t.dueDate < today) groups.overdue.push(t);
+      else if (t.dueDate === today) groups.today.push(t);
+      else if (t.dueDate === tomorrow) groups.tomorrow.push(t);
+      else groups.later.push(t);
+    });
+
+    const sortByDate = (a, b) => (a.dueDate || '9').localeCompare(b.dueDate || '9');
+    Object.values(groups).forEach(g => g.sort(sortByDate));
+
+    return groups;
+  }
+
+  // --- Рендер ---
+  function render() {
+    const container = document.getElementById('tasksContainer');
+    const groups = groupTasks();
+
+    const pendingCount = tasks.filter(t => !t.completed).length;
+    const doneCount = tasks.filter(t => t.completed).length;
+    document.getElementById('statPending').textContent = pendingCount;
+    document.getElementById('statDone').textContent = doneCount;
+
+    const hasAny = pendingCount > 0 || doneCount > 0;
+
+    if (!hasAny) {
+      container.innerHTML = `
+        <div class="empty">
+          <div class="empty__icon">✨</div>
+          <div class="empty__text">
+            Пока пусто. Добавь первый долг — <br>
+            и мы разложим его по полочкам.
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    let html = '';
+
+    const sectionConfig = [
+      { key: 'overdue', title: 'Просрочено', cls: 'section--overdue' },
+      { key: 'today', title: 'Сегодня', cls: 'section--today' },
+      { key: 'tomorrow', title: 'Завтра', cls: 'section--tomorrow' },
+      { key: 'later', title: 'Позже', cls: '' },
+      { key: 'noDate', title: 'Без срока', cls: '' }
+    ];
+
+    sectionConfig.forEach(cfg => {
+      const list = groups[cfg.key];
+      if (!list.length) return;
+
+      html += `<section class="section ${cfg.cls}">`;
+      html += `<div class="section__title"><span class="dot"></span>${cfg.title}</div>`;
+      html += `<div class="task-list">`;
+
+      list.forEach(task => {
+        const metaClass = cfg.key === 'overdue' ? 'task--overdue' : (cfg.key === 'today' ? 'task--today' : '');
+        html += `
+          <article class="task ${metaClass}" data-id="${task.id}">
+            <button class="task__check" onclick="completeTask('${task.id}')" aria-label="Выполнено">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent)">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </button>
+            <div class="task__content">
+              <div class="task__title">${escapeHtml(task.title)}</div>
+              <div class="task__meta">${formatDateDisplay(task.dueDate)}</div>
+            </div>
+            <div class="task__actions">
+              <button class="task__btn task__btn--ai" onclick="askAI('${task.id}')" aria-label="Спросить ИИ">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="22"></line>
+                </svg>
+              </button>
+              <button class="task__btn task__btn--delete" onclick="deleteTask('${task.id}')" aria-label="Удалить">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </article>
+        `;
+      });
+
+      html += `</div></section>`;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // --- ИИ-помощник ---
+  function analyzeTask(title) {
+    const lower = title.toLowerCase();
+    
+    const subjects = {
+      physics: {
+        keywords: ['физик', 'закон', 'формула', 'ом', 'нютон', 'энерги', 'сил', 'скорост'],
+        name: 'Физика',
+        advice: 'Физика — это про то, как устроен мир. Не зубри формулы — пойми логику.',
+        steps: [
+          'Прочитай условие задачи медленно, представь ситуацию в жизни',
+          'Выпиши что дано и что нужно найти',
+          'Вспомни 2-3 формулы, которые могут подойти',
+          'Подставь числа и проверь единицы измерения',
+          'Подумай: ответ реалистичный? Имеет ли смысл?'
+        ]
+      },
+      math: {
+        keywords: ['матем', 'алгебр', 'геометр', 'уравнен', 'функци', 'производн', 'интеграл'],
+        name: 'Математика',
+        advice: 'Математика — это язык. Главное — понять правило, а не запомнить пример.',
+        steps: [
+          'Определи тип задачи (уравнение, неравенство, задача на движение)',
+          'Выпиши все известные величины',
+          'Выбери метод решения (подстановка, графики, формулы)',
+          'Реши пошагово, проверяя каждый шаг',
+          'Сделай проверку — подставь ответ в исходное условие'
+        ]
+      },
+      literature: {
+        keywords: ['литератур', 'сочинен', 'книг', 'роман', 'стих', 'поэм', 'автор', 'писател'],
+        name: 'Литература',
+        advice: 'Литература — это про людей и их чувства. Читай как детектив.',
+        steps: [
+          'Прочитай произведение (или пересказ, если совсем нет времени)',
+          'Выпиши 3-5 ключевых моментов и цитат',
+          'Подумай: почему герой так поступил? Что он чувствовал?',
+          'Свяжи с темой сочинения или вопроса',
+          'Напиши план: введение, 2-3 аргумента, вывод'
+        ]
+      },
+      history: {
+        keywords: ['истори', 'войн', 'революц', 'цар', 'дата', 'событи', 'век', 'эпох'],
+        name: 'История',
+        advice: 'История — это не даты, а истории людей. Представь себя в том времени.',
+        steps: [
+          'Определи период и ключевых персонажей',
+          'Составь хронологию событий (что за чем)',
+          'Пойми причины и последствия',
+          'Свяжи с тем, что уже знаешь (это помогает запомнить)',
+          'Перескажи своими словами — если понял, значит запомнил'
+        ]
+      },
+      language: {
+        keywords: ['английск', 'english', 'русск', 'язык', 'грамматик', 'слов', 'перевод', 'текст'],
+        name: 'Языки',
+        advice: 'Язык — это навык, как езда на велосипеде. Главное — практика.',
+        steps: [
+          'Повтори 10-15 ключевых слов по теме',
+          'Разбери 2-3 грамматических правила с примерами',
+          'Прочитай короткий текст вслух',
+          'Напиши 5 предложений с новыми словами',
+          'Послушай/посмотри что-то на этом языке 10 минут'
+        ]
+      },
+      life: {
+        keywords: ['куп', 'оплат', 'позвон', 'встреч', 'подар', 'убр', 'помоч', 'сходить'],
+        name: 'Жизненное',
+        advice: 'Бытовые задачи кажутся мелкими, но они съедают время. Разбей на атомарные шаги.',
+        steps: [
+          'Запиши что именно нужно сделать (конкретно)',
+          'Оцени сколько времени займёт',
+          'Поставь напоминание за час до',
+          'Сделай первое действие прямо сейчас (даже маленькое)',
+          'Отметь выполнение — дофаминовое подкрепление!'
+        ]
+      }
+    };
+
+    // Ищем подходящий предмет
+    for (const [key, subj] of Object.entries(subjects)) {
+      if (subj.keywords.some(kw => lower.includes(kw))) {
+        return subj;
+      }
+    }
+
+    // Дефолтный совет для учёбы
+    return {
+      name: 'Учёба',
+      advice: 'Любая задача становится легче, если разбить её на маленькие шаги.',
+      steps: [
+        'Прочитай задание внимательно, выдели ключевые слова',
+        'Определи: что именно нужно сделать (написать, решить, прочитать)',
+        'Разбей на 3-5 маленьких подзадач',
+        'Начни с самой простой — это даст momentum',
+        'Сделай перерыв 5 минут после каждого блока'
+      ]
+    };
+  }
+
+  function askAI(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const analysis = analyzeTask(task.title);
+    
+    const modalContent = document.getElementById('modalContent');
+    modalContent.innerHTML = `
+      <div class="modal__task">
+        <strong>Задача:</strong> ${escapeHtml(task.title)}
+      </div>
+      <div class="ai-response">
+        <div class="ai-response__section">
+          <div class="ai-response__label">📚 ${analysis.name}</div>
+          <div class="ai-response__text">${analysis.advice}</div>
+        </div>
+        <div class="ai-response__section">
+          <div class="ai-response__label">🎯 План действий</div>
+          <ol class="ai-response__steps">
+            ${analysis.steps.map(step => `<li>${step}</li>`).join('')}
+          </ol>
+        </div>
+      </div>
+      <div class="modal__actions">
+        <button class="modal__btn modal__btn--secondary" onclick="closeModal()">Закрыть</button>
+        <button class="modal__btn modal__btn--primary" onclick="startTask('${taskId}')">Начать делать</button>
+      </div>
+    `;
+
+    openModal();
+  }
+
+  function startTask(taskId) {
+    closeModal();
+    showToast('Отлично! Первый шаг — самый важный 🚀');
+    // Можно добавить дополнительную логику, например, таймер Помодоро
+  }
+
+  function openModal() {
+    document.getElementById('modalOverlay').classList.add('modal-overlay--active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('modal-overlay--active');
+    document.body.style.overflow = '';
+  }
+
+  // --- Действия ---
+  function addTask(title, dueDate) {
+    const task = {
+      id: 't_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      title: title.trim(),
+      dueDate: dueDate || null,
+      completed: false,
+      createdAt: Date.now()
+    };
+    tasks.push(task);
+    saveTasks();
+    render();
+    showToast('Добавлено. Разберёмся по шагам ✨');
+  }
+
+  function completeTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (!task || task.completed) return;
+
+    const el = document.querySelector(`.task[data-id="${id}"]`);
+    if (el) {
+      el.classList.add('task--completing');
+      if (navigator.vibrate) navigator.vibrate([20, 30, 40]);
+    }
+
+    setTimeout(() => {
+      task.completed = true;
+      task.completedAt = Date.now();
+      saveTasks();
+      render();
+      showToast('Готово. Ещё один закрыт 💪');
+    }, 500);
+  }
+
+  function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    saveTasks();
+    render();
+    showToast('Удалено');
+  }
+
+  // --- Тосты ---
+  function showToast(message) {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `
+      <div class="toast__icon">✓</div>
+      <div>${escapeHtml(message)}</div>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('toast--out');
+      setTimeout(() => toast.remove(), 300);
+    }, 2200);
+  }
+
+  // --- Инициализация ---
+  function init() {
+    loadTasks();
+
+    const dateInput = document.getElementById('dateInput');
+    dateInput.value = todayKey();
+
+    const form = document.getElementById('addForm');
+    const taskInput = document.getElementById('taskInput');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = taskInput.value.trim();
+      
+      if (!title) {
+        showToast('Введи название задачи');
+        return;
+      }
+
+      addTask(title, dateInput.value);
+      taskInput.value = '';
+      dateInput.value = todayKey();
+      taskInput.focus();
+    });
+
+    // Закрытие модалки по клику на оверлей
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+      if (e.target.id === 'modalOverlay') {
+        closeModal();
+      }
+    });
+
+    render();
+  }
+
+  // Делаем функции глобальными для onclick
+  window.completeTask = completeTask;
+  window.deleteTask = deleteTask;
+  window.askAI = askAI;
+  window.closeModal = closeModal;
+  window.startTask = startTask;
+
+  init();
+</script>
+
+</body>
+</html>
